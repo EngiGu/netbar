@@ -1,8 +1,11 @@
 #!/usr/bin/python3
+import os
 import re
 import socket
 import time
 from subprocess import getstatusoutput
+import pickle
+
 import tkinter as tk
 
 
@@ -11,7 +14,19 @@ class NetBar:
         self.local_ip = self.get_local_ip()
         self.refresh_time = refresh  # 刷新时间间隔（ms）
         self.bar = None
-        pass
+        self.label = None
+        self.x = 0
+        self.y = 0
+        self.skip_map = [('GreenYellow', 'black'), ('#F5BB00', 'white'), ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
+        self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'netBar.pkl')
+        self.config = self.obtain_config()
+
+    def obtain_config(self):
+        # 检查是否有配置文件
+        if not os.path.exists(self.config_path):
+            return {'mode': 0, 'skin': 0, 'x': 0, 'y': 0}
+        with open(self.config_path, 'rb') as f:
+            return pickle.load(f)
 
     def get_local_ip(self):
         # 获取本机的内网ip
@@ -86,43 +101,46 @@ class NetBar:
         # print(down, up)
         return up, down, up_total2, down_total2
 
-    def refresh_net_data(self, bar, label):
+    def refresh_net_data(self):
         up, down, up_total, down_total = self.get_up_down_data()
         text = ' '.join([up, down, up_total, down_total])
-        # print(text)
-        label.config(text=text, width=len(text))
+        self.label.config(text=text, width=len(text))
         # text_value_adj.set(text)
-
-        def fresh():
-            return self.refresh_net_data(bar, label)
-
-        bar.after(self.refresh_time, fresh)
+        #
+        # def fresh():
+        #     return self.refresh_net_data(self.bar, self.label)
+        self.bar.after(self.refresh_time, self.refresh_net_data)
 
     def get_tk_bar(self):
+        config = self.config
+
         bar = tk.Tk()
         self.bar = bar
         bar.overrideredirect(True)  # 去掉标题栏
         bar.wm_attributes('-topmost', 1)  # 置顶窗口
-        skins = [('GreenYellow', 'black'), ('#F5BB00', 'white'),
-                 ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
 
         # text_value_adj = tk.StringVar()  # 操作label值变化
-
-        label = tk.Label(bar, text='   starting net bar...   ', bg=skins[0][0],fg=skins[0][1])
+        bg = self.skip_map[config['skin']][0]
+        fg = self.skip_map[config['skin']][1]
+        label = tk.Label(bar, text='   starting net bar...   ', bg=bg, fg=fg)
         # label = tk.Label(bar, textvariable=text_value_adj)
         # text_value_adj.set('   starting net bar...   ')
         label.pack()
+        self.label = label
         # time.sleep(2)
         label.bind('<B1-Motion>', self.bar_move)
+        label.bind('<Button-1>', self.bar_click)
+        label.bind('<Double-Button-1>', self.bar_change_skin)
+        label.bind('<Double-Button-3>', self.bar_exit)
 
-        bar.after(self.refresh_time, self.refresh_net_data(bar, label))
+        bar.after(self.refresh_time, self.refresh_net_data)
         return bar
 
     def bar_move(self, e):
         '''移动窗口'''
         if e.x_root < self.bar.winfo_screenwidth() - 10:
-            new_x = e.x - 0 + self.bar.winfo_x()
-            new_y = e.y - 0 + self.bar.winfo_y()
+            new_x = e.x - self.x + self.bar.winfo_x()
+            new_y = e.y - self.y + self.bar.winfo_y()
             if new_x < 10:
                 new_x = 0
             if new_x > self.bar.winfo_screenwidth() - self.bar.winfo_width() - 10:
@@ -133,15 +151,33 @@ class NetBar:
                 new_y = self.bar.winfo_screenheight() - self.bar.winfo_height()
             self.bar.geometry('+{}+{}'.format(new_x, new_y))
 
+    def bar_click(self, e):
+        # '''左键单击窗口时获得鼠标位置，辅助移动窗口'''
+        self.x = e.x
+        self.y = e.y
+
+    def bar_change_skin(self, e):
+        curr_skin = self.config['skin']
+        next_skin = 0 if len(self.skip_map) - 1 == curr_skin else curr_skin + 1
+        print('++++', next_skin)
+        self.config['skin'] = next_skin
+        bg = self.skip_map[next_skin][0]
+        fg = self.skip_map[next_skin][1]
+        self.label.config(bg=bg, fg=fg)
+
+    def bar_exit(self, e):
+        # 退出关闭bar
+        self.config['x'] = self.bar.winfo_x()
+        self.config['y'] = self.bar.winfo_y()
+        with open(self.config_path, 'wb') as f:
+            pickle.dump(self.config, f)
+        exit()
+
     def run(self):
-        # self.get_up_down_data()
         bar = self.get_tk_bar()
         bar.mainloop()
 
 
 if __name__ == '__main__':
     nb = NetBar()
-    print(nb.get_local_ip())
     nb.run()
-    # b = Bar()
-    # b.get_tk_bar()
