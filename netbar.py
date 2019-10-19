@@ -7,9 +7,13 @@ from subprocess import getstatusoutput
 import pickle
 
 import tkinter as tk
+import psutil
 
 
 class NetBar:
+    # 四种颜色的状态条
+    # 两种模式 0: 上传下载以及总量 1: 上传下载以及c/m占用
+
     def __init__(self, refresh=1000):
         self.local_ip = self.get_local_ip()
         self.refresh_time = refresh  # 刷新时间间隔（ms）
@@ -19,7 +23,7 @@ class NetBar:
         self.y = 0
         self.skip_map = [('GreenYellow', 'black'), ('#F5BB00', 'white'), ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
         self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'netBar.pkl')
-        self.config = self.obtain_config()
+        self.config = self.obtain_config()  # {'mode': 0, 'skin': 0, 'x': 0, 'y': 0}
 
     def obtain_config(self):
         # 检查是否有配置文件
@@ -101,9 +105,21 @@ class NetBar:
         # print(down, up)
         return up, down, up_total2, down_total2
 
+    def get_cpu_and_memory(self):
+        # 获取cpu/m
+        c_percent = psutil.cpu_percent(interval=1)
+        m_percent = psutil.virtual_memory().percent
+        return 'C: %s%%' % c_percent, 'M: %s%%' % m_percent
+
     def refresh_net_data(self):
         up, down, up_total, down_total = self.get_up_down_data()
-        text = ' '.join([up, down, up_total, down_total])
+        if self.config['mode'] == 0:
+            text = ' '.join([up, down, up_total, down_total])
+        elif self.config['mode'] == 1:
+            c_percent, m_percent = self.get_cpu_and_memory()
+            text = ' '.join([up, down, c_percent, m_percent])
+        else:
+            raise Exception('mode error!')
         self.label.config(text=text, width=len(text))
         # text_value_adj.set(text)
         #
@@ -116,6 +132,7 @@ class NetBar:
 
         bar = tk.Tk()
         self.bar = bar
+        bar.geometry('+{}+{}'.format(self.config['x'], self.config['y']))  # 窗口初始位置
         bar.overrideredirect(True)  # 去掉标题栏
         bar.wm_attributes('-topmost', 1)  # 置顶窗口
 
@@ -132,6 +149,7 @@ class NetBar:
         label.bind('<Button-1>', self.bar_click)
         label.bind('<Double-Button-1>', self.bar_change_skin)
         label.bind('<Double-Button-3>', self.bar_exit)
+        label.bind('<Button-3>', self.bar_change_mode)
 
         bar.after(self.refresh_time, self.refresh_net_data)
         return bar
@@ -150,6 +168,7 @@ class NetBar:
             if new_y > self.bar.winfo_screenheight() - self.bar.winfo_height() - 10:
                 new_y = self.bar.winfo_screenheight() - self.bar.winfo_height()
             self.bar.geometry('+{}+{}'.format(new_x, new_y))
+            self.config['x'], self.config['y'] = new_x, new_y
 
     def bar_click(self, e):
         # '''左键单击窗口时获得鼠标位置，辅助移动窗口'''
@@ -157,13 +176,18 @@ class NetBar:
         self.y = e.y
 
     def bar_change_skin(self, e):
+        # 改变状态条的颜色
         curr_skin = self.config['skin']
         next_skin = 0 if len(self.skip_map) - 1 == curr_skin else curr_skin + 1
-        print('++++', next_skin)
+        # print('++++', next_skin)
         self.config['skin'] = next_skin
         bg = self.skip_map[next_skin][0]
         fg = self.skip_map[next_skin][1]
         self.label.config(bg=bg, fg=fg)
+
+    def bar_change_mode(self, e):
+        # 右键单击
+        self.config['mode'] = 1 if self.config['mode'] == 0 else 0
 
     def bar_exit(self, e):
         # 退出关闭bar
@@ -180,4 +204,5 @@ class NetBar:
 
 if __name__ == '__main__':
     nb = NetBar()
+    # nb.get_cpu_and_memory()
     nb.run()
