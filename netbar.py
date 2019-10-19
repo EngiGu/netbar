@@ -87,8 +87,14 @@ class NetBar:
     def refresh_net_data(self, bar, label):
         up, down, up_total, down_total = self.get_up_down_data()
         text = ' '.join([up, down, up_total, down_total])
+        print(text)
         label.config(text=text, width=len(text))
-        # bar.after(1000, self.refresh_net_data(bar, label))
+        # text_value_adj.set(text)
+
+        def fresh():
+            return self.refresh_net_data(bar, label)
+
+        bar.after(1000, fresh)
 
     def get_tk_bar(self):
         bar = tk.Tk()
@@ -96,16 +102,21 @@ class NetBar:
         bar.wm_attributes('-topmost', 1)  # 置顶窗口
         skins = [('GreenYellow', 'black'), ('#F5BB00', 'white'),
                  ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
-        label = tk.Label(bar, text='   starting net bar...   ', )
-        label.pack()
 
-        # bar.mainloop()
+        text_value_adj = tk.StringVar()  # 操作label值变化
+
+        label = tk.Label(bar, text='   starting net bar...   ', )
+        # label = tk.Label(bar, textvariable=text_value_adj)
+        # text_value_adj.set('   starting net bar...   ')
+        label.pack()
+        time.sleep(2)
         bar.after(1000, self.refresh_net_data(bar, label))
         return bar
 
     def run(self):
         # self.get_up_down_data()
         bar = self.get_tk_bar()
+        print(666666666)
         bar.mainloop()
 
 
