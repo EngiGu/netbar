@@ -198,11 +198,14 @@ class NetBar:
         exit()
 
     def run(self):
-        bar = self.get_tk_bar()
-        bar.mainloop()
-
+        try:
+            bar = self.get_tk_bar()
+            bar.mainloop()
+        except KeyboardInterrupt:
+            print('\nctrl+c, exit...')
+            self.bar_exit('exit')
+            exit()
 
 if __name__ == '__main__':
     nb = NetBar()
-    # nb.get_cpu_and_memory()
     nb.run()
