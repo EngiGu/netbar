@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 import re
 import socket
+import time
 from subprocess import getstatusoutput
+import tkinter as tk
 
 
 class NetBar:
@@ -28,11 +30,11 @@ class NetBar:
     def format_net_data(self, data_tuple: tuple):
         rt, total = data_tuple  # 5755137,5.4 MiB
         total = ''.join([total.split(' ')[0], total.split(' ')[1][:1]])
-        # print(rt, total)
-        return rt, total
+        return int(rt), total
 
     def extract_up_and_down_num(self, raw):
         # 先使用local ip 判断是那个网卡， 再取出 上传下载发包数据
+        t = time.time()
         all_net = raw.split('\n\n')
         # print(len(all_net))
 
@@ -42,7 +44,6 @@ class NetBar:
             if self.local_ip in net:
                 aim_net = net
                 break
-        print(aim_net)
 
         # ubuntu RX bytes:80372113232 (80.3 GB)  TX bytes:40502434753 (40.5 GB)
         # deepin  RX packets 38333  bytes 34082486 (32.5 MiB)
@@ -54,23 +55,82 @@ class NetBar:
             raise Exception('获取网速数据错误')
         up_rt, up_total = self.format_net_data(up_data[0])
         down_rt, down_total = self.format_net_data(down_data[0])
-        return up_rt, up_total, down_rt, down_total
+        return up_rt, up_total, down_rt, down_total, t
+
+    def humanize(self, flow):
+        '''人性化显示流量单位'''
+        n = 0
+        while flow >= 1000:
+            flow /= 1024
+            n += 1
+        if n == 2:
+            return '{:.1f}'.format(flow) + 'MB'
+        else:
+            return '{:.0f}'.format(flow) + ('B', 'KB')[n]
 
     def get_up_down_data(self):
         # 获取上传和下载的速度
-        _, ifconfig = self._get_shell_result_('ifconfig')
+        _, ifconfig1 = self._get_shell_result_('ifconfig')
         # print(_, ifconfig)
-        self.extract_up_and_down_num(ifconfig)
+        up_rt1, up_total1, down_rt1, down_total1, t1 = self.extract_up_and_down_num(ifconfig1)
+        # print(up_rt, up_total, down_rt, down_total)
+        time.sleep(0.5)
+        _, ifconfig2 = self._get_shell_result_('ifconfig')
+        up_rt2, up_total2, down_rt2, down_total2, t2 = self.extract_up_and_down_num(ifconfig2)
+        down = (down_rt2 - down_rt1) / (t2 - t1)
+        down = '↓ {}'.format(self.humanize(down))
+        up = (up_rt2 - up_rt1) / (t2 - t1)
+        up = '↑ {}'.format(self.humanize(up))
+        # print(down, up)
+        return up, down, up_total2, down_total2
+
+    def refresh_net_data(self, bar, label):
+        up, down, up_total, down_total = self.get_up_down_data()
+        text = ' '.join([up, down, up_total, down_total])
+        label.config(text=text, width=len(text))
+        # bar.after(1000, self.refresh_net_data(bar, label))
 
     def get_tk_bar(self):
-        return
+        bar = tk.Tk()
+        bar.overrideredirect(True)  # 去掉标题栏
+        bar.wm_attributes('-topmost', 1)  # 置顶窗口
+        skins = [('GreenYellow', 'black'), ('#F5BB00', 'white'),
+                 ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
+        label = tk.Label(bar, text='   starting net bar...   ', )
+        label.pack()
+
+        # bar.mainloop()
+        bar.after(1000, self.refresh_net_data(bar, label))
+        return bar
 
     def run(self):
-        self.get_up_down_data()
-        pass
+        # self.get_up_down_data()
+        bar = self.get_tk_bar()
+        bar.mainloop()
+
+
+# class Bar:
+#     def __init__(self):
+#         pass
+#
+#     def get_tk_bar(self):
+#         bar = tk.Tk()
+#         bar.overrideredirect(True)  # 去掉标题栏
+#         bar.wm_attributes('-topmost', 1)  # 置顶窗口
+#         skins = [('GreenYellow', 'black'), ('#F5BB00', 'white'),
+#                  ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
+#         l = tk.Label(bar, text='   starting net bar...   ', )
+#         l.pack()
+#
+#         bar.mainloop()
+#
+#
+#         return
 
 
 if __name__ == '__main__':
     nb = NetBar()
-    # print(nb.get_local_ip())
+    print(nb.get_local_ip())
     nb.run()
+    # b = Bar()
+    # b.get_tk_bar()
