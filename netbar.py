@@ -7,8 +7,10 @@ import tkinter as tk
 
 
 class NetBar:
-    def __init__(self):
+    def __init__(self, refresh=1000):
         self.local_ip = self.get_local_ip()
+        self.refresh_time = refresh  # 刷新时间间隔（ms）
+        self.bar = None
         pass
 
     def get_local_ip(self):
@@ -87,56 +89,54 @@ class NetBar:
     def refresh_net_data(self, bar, label):
         up, down, up_total, down_total = self.get_up_down_data()
         text = ' '.join([up, down, up_total, down_total])
-        print(text)
+        # print(text)
         label.config(text=text, width=len(text))
         # text_value_adj.set(text)
 
         def fresh():
             return self.refresh_net_data(bar, label)
 
-        bar.after(1000, fresh)
+        bar.after(self.refresh_time, fresh)
 
     def get_tk_bar(self):
         bar = tk.Tk()
+        self.bar = bar
         bar.overrideredirect(True)  # 去掉标题栏
         bar.wm_attributes('-topmost', 1)  # 置顶窗口
         skins = [('GreenYellow', 'black'), ('#F5BB00', 'white'),
                  ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
 
-        text_value_adj = tk.StringVar()  # 操作label值变化
+        # text_value_adj = tk.StringVar()  # 操作label值变化
 
-        label = tk.Label(bar, text='   starting net bar...   ', )
+        label = tk.Label(bar, text='   starting net bar...   ', bg=skins[0][0],fg=skins[0][1])
         # label = tk.Label(bar, textvariable=text_value_adj)
         # text_value_adj.set('   starting net bar...   ')
         label.pack()
-        time.sleep(2)
-        bar.after(1000, self.refresh_net_data(bar, label))
+        # time.sleep(2)
+        label.bind('<B1-Motion>', self.bar_move)
+
+        bar.after(self.refresh_time, self.refresh_net_data(bar, label))
         return bar
+
+    def bar_move(self, e):
+        '''移动窗口'''
+        if e.x_root < self.bar.winfo_screenwidth() - 10:
+            new_x = e.x - 0 + self.bar.winfo_x()
+            new_y = e.y - 0 + self.bar.winfo_y()
+            if new_x < 10:
+                new_x = 0
+            if new_x > self.bar.winfo_screenwidth() - self.bar.winfo_width() - 10:
+                new_x = self.bar.winfo_screenwidth() - 4
+            if new_y < 10:
+                new_y = 0
+            if new_y > self.bar.winfo_screenheight() - self.bar.winfo_height() - 10:
+                new_y = self.bar.winfo_screenheight() - self.bar.winfo_height()
+            self.bar.geometry('+{}+{}'.format(new_x, new_y))
 
     def run(self):
         # self.get_up_down_data()
         bar = self.get_tk_bar()
-        print(666666666)
         bar.mainloop()
-
-
-# class Bar:
-#     def __init__(self):
-#         pass
-#
-#     def get_tk_bar(self):
-#         bar = tk.Tk()
-#         bar.overrideredirect(True)  # 去掉标题栏
-#         bar.wm_attributes('-topmost', 1)  # 置顶窗口
-#         skins = [('GreenYellow', 'black'), ('#F5BB00', 'white'),
-#                  ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
-#         l = tk.Label(bar, text='   starting net bar...   ', )
-#         l.pack()
-#
-#         bar.mainloop()
-#
-#
-#         return
 
 
 if __name__ == '__main__':
