@@ -9,12 +9,14 @@ import pickle
 import tkinter as tk
 import psutil
 
+ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 class NetBar:
     # 四种颜色的状态条
     # 两种模式 0: 上传下载以及总量 1: 上传下载以及c/m占用
 
-    def __init__(self, refresh=1000):
+    def __init__(self, refresh=1000, install=True):
         self.local_ip = self.get_local_ip()
         self.refresh_time = refresh  # 刷新时间间隔（ms）
         self.bar = None
@@ -22,8 +24,31 @@ class NetBar:
         self.x = 0
         self.y = 0
         self.skip_map = [('GreenYellow', 'black'), ('#F5BB00', 'white'), ('DeepSkyBlue', 'Ivory'), ('Violet', 'Ivory')]
-        self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'netBar.pkl')
+        self.config_path = os.path.join(ROOT_PATH, 'netBar.pkl')
         self.config = self.obtain_config()  # {'mode': 0, 'skin': 0, 'x': 0, 'y': 0}
+        self.install_app(install)
+
+    def install_app(self, install):
+        if install:
+            name = 'NetBar'
+            content = '''[Desktop Entry]
+            Encoding=UTF-8
+            Name={}
+            Comment=NetStatus
+            Exec=python3 {}
+            Icon={}
+            Categories=Application;
+            Version={}
+            Type=Application
+            Terminal=false\n'''.format(
+                name,
+                os.path.abspath(__file__),
+                os.path.join(ROOT_PATH, 'wm.png'),
+                0.1
+            )
+            launcher_path = os.path.join(os.environ['HOME'], '.local/share/applications/%s.desktop' % name)
+            with open(launcher_path, 'w') as f:
+                f.write(content)
 
     def obtain_config(self):
         # 检查是否有配置文件
@@ -186,7 +211,7 @@ class NetBar:
         self.label.config(bg=bg, fg=fg)
 
     def bar_change_mode(self, e):
-        # 右键单击
+        # 右键单击(暂时只有两种模式)
         self.config['mode'] = 1 if self.config['mode'] == 0 else 0
 
     def bar_exit(self, e):
@@ -206,6 +231,8 @@ class NetBar:
             self.bar_exit('exit')
             exit()
 
+
 if __name__ == '__main__':
     nb = NetBar()
     nb.run()
+    # print(os.environ['HOME'])
