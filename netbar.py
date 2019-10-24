@@ -128,6 +128,7 @@ class NetBar:
         up = (up_rt2 - up_rt1) / (t2 - t1)
         up = '↑ {}'.format(self.humanize(up))
         # print(down, up)
+        up_total2, down_total2 = 'U: %s' % up_total2, 'D: %s' % down_total2
         return up, down, up_total2, down_total2
 
     def get_cpu_and_memory(self):
